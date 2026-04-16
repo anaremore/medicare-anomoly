@@ -248,6 +248,7 @@ export default function ProviderDetail({ npi, onClose }) {
                 <th>NPI</th>
                 <th>Name</th>
                 <th>Type</th>
+                <th>Enumerated</th>
                 <th>Risk</th>
               </tr>
             </thead>
@@ -257,6 +258,7 @@ export default function ProviderDetail({ npi, onClose }) {
                   <td className="mono">{p.npi}</td>
                   <td>{p.name}</td>
                   <td className="small">{p.taxonomy_desc}</td>
+                  <td>{p.enumeration_date}</td>
                   <td>
                     <RiskBadge score={p.composite_score} />
                   </td>
