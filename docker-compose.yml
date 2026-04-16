@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sentinel}
       POSTGRES_DB: ${POSTGRES_DB:-sentinel}
     ports:
-      - "5432:5432"
+      - "5450:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

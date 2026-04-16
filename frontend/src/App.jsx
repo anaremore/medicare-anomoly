@@ -2,6 +2,7 @@ import { useState } from "react";
 import Dashboard from "./components/Dashboard";
 import MapView from "./components/Map";
 import ProviderList from "./components/ProviderList";
+import ProviderDetail from "./components/ProviderDetail";
 import AddressDrilldown from "./components/AddressDrilldown";
 import AlertFeed from "./components/AlertFeed";
 
@@ -20,7 +21,13 @@ export default function App() {
 
   const handleAddressClick = (addressId) => {
     setSelectedAddress(addressId);
+    setSelectedNpi(null);
     setActiveTab("addresses");
+  };
+
+  const handleProviderClick = (npi) => {
+    setSelectedNpi(npi);
+    setActiveTab("provider-detail");
   };
 
   return (
@@ -35,6 +42,7 @@ export default function App() {
               className={`tab ${activeTab === tab.id ? "active" : ""}`}
               onClick={() => {
                 setActiveTab(tab.id);
+                setSelectedNpi(null);
                 if (tab.id !== "addresses") setSelectedAddress(null);
               }}
             >
@@ -50,7 +58,15 @@ export default function App() {
         {activeTab === "map" && (
           <MapView onAddressClick={handleAddressClick} />
         )}
-        {activeTab === "providers" && <ProviderList />}
+        {activeTab === "providers" && (
+          <ProviderList onProviderClick={handleProviderClick} />
+        )}
+        {activeTab === "provider-detail" && selectedNpi && (
+          <ProviderDetail
+            npi={selectedNpi}
+            onClose={() => setActiveTab("providers")}
+          />
+        )}
         {activeTab === "addresses" && (
           <AddressDrilldown
             selectedAddressId={selectedAddress}
@@ -61,8 +77,8 @@ export default function App() {
       </main>
       <footer className="app-footer">
         <p>
-          All data from public federal registries (NPPES, OIG LEIE). Anomaly
-          signals are not accusations of fraud.
+          All data from public federal registries (NPPES, OIG LEIE, CMS).
+          Anomaly signals are not accusations of fraud.
         </p>
       </footer>
     </div>

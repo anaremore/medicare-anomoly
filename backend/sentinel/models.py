@@ -132,6 +132,58 @@ class Exclusion(Base):
     )
 
 
+class Billing(Base):
+    __tablename__ = "billing"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    npi: Mapped[str] = mapped_column(String(10), index=True)
+    hcpcs_code: Mapped[str | None] = mapped_column(String(10))
+    hcpcs_description: Mapped[str | None] = mapped_column(Text)
+    rbcs_category: Mapped[str | None] = mapped_column(Text)
+    total_beneficiaries: Mapped[int | None] = mapped_column(Integer)
+    total_claims: Mapped[int | None] = mapped_column(Integer)
+    total_services: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    avg_submitted_charge: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    avg_medicare_allowed: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    avg_medicare_payment: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    is_rental: Mapped[bool | None] = mapped_column(Boolean)
+    data_year: Mapped[int] = mapped_column(Integer)
+    source: Mapped[str] = mapped_column(String(30))  # dmepos_supplier, physician
+
+    __table_args__ = (
+        Index("idx_billing_npi_year", "npi", "data_year"),
+        Index("idx_billing_hcpcs", "hcpcs_code"),
+    )
+
+
+class BillingSummary(Base):
+    """Aggregated billing per NPI per year from the 'by Supplier' dataset."""
+    __tablename__ = "billing_summary"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    npi: Mapped[str] = mapped_column(String(10), index=True)
+    total_hcpcs_codes: Mapped[int | None] = mapped_column(Integer)
+    total_beneficiaries: Mapped[int | None] = mapped_column(Integer)
+    total_claims: Mapped[int | None] = mapped_column(Integer)
+    total_services: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    total_submitted_charges: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    total_medicare_allowed: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    total_medicare_payment: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    # DME-specific subtotals
+    dme_total_services: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    dme_submitted_charges: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    dme_medicare_payment: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    # POS (Prosthetics/Orthotics/Supplies) subtotals
+    pos_total_services: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    pos_submitted_charges: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    pos_medicare_payment: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    data_year: Mapped[int] = mapped_column(Integer)
+
+    __table_args__ = (
+        Index("uq_billing_summary_npi_year", "npi", "data_year", unique=True),
+    )
+
+
 class RiskScore(Base):
     __tablename__ = "risk_scores"
 
@@ -142,6 +194,7 @@ class RiskScore(Base):
     entity_profile_score: Mapped[float | None] = mapped_column(Numeric(5, 2))
     network_association_score: Mapped[float | None] = mapped_column(Numeric(5, 2))
     geographic_risk_score: Mapped[float | None] = mapped_column(Numeric(5, 2))
+    billing_velocity_score: Mapped[float | None] = mapped_column(Numeric(5, 2))
     composite_score: Mapped[float | None] = mapped_column(Numeric(5, 2))
     signals: Mapped[dict | None] = mapped_column(JSONB)
     computed_at: Mapped[datetime] = mapped_column(

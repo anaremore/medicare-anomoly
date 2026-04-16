@@ -8,6 +8,8 @@ from sentinel.config import settings
 from sentinel.db import get_db
 from sentinel.models import (
     Address,
+    Billing,
+    BillingSummary,
     Exclusion,
     Provider,
     ProviderAddress,
@@ -128,6 +130,62 @@ def get_provider(npi: str, db: Session = Depends(get_db)):
     return result
 
 
+@router.get("/providers/{npi}/billing")
+def get_provider_billing(npi: str, db: Session = Depends(get_db)):
+    """Get billing history for a provider — HCPCS-level detail + yearly summaries."""
+    # Yearly summaries
+    summaries = (
+        db.query(BillingSummary)
+        .filter(BillingSummary.npi == npi)
+        .order_by(BillingSummary.data_year.desc())
+        .all()
+    )
+
+    # HCPCS detail (latest year)
+    latest_year = summaries[0].data_year if summaries else None
+    line_items = []
+    if latest_year:
+        line_items = (
+            db.query(Billing)
+            .filter(Billing.npi == npi, Billing.data_year == latest_year)
+            .order_by(Billing.total_services.desc().nullslast())
+            .all()
+        )
+
+    return {
+        "npi": npi,
+        "yearly_summaries": [
+            {
+                "year": s.data_year,
+                "total_medicare_payment": float(s.total_medicare_payment or 0),
+                "total_submitted_charges": float(s.total_submitted_charges or 0),
+                "total_beneficiaries": s.total_beneficiaries,
+                "total_claims": s.total_claims,
+                "total_services": float(s.total_services or 0),
+                "total_hcpcs_codes": s.total_hcpcs_codes,
+                "dme_medicare_payment": float(s.dme_medicare_payment or 0),
+                "pos_medicare_payment": float(s.pos_medicare_payment or 0),
+            }
+            for s in summaries
+        ],
+        "hcpcs_detail": [
+            {
+                "hcpcs_code": b.hcpcs_code,
+                "hcpcs_description": b.hcpcs_description,
+                "rbcs_category": b.rbcs_category,
+                "total_beneficiaries": b.total_beneficiaries,
+                "total_claims": b.total_claims,
+                "total_services": float(b.total_services or 0),
+                "avg_submitted_charge": float(b.avg_submitted_charge or 0),
+                "avg_medicare_payment": float(b.avg_medicare_payment or 0),
+                "is_rental": b.is_rental,
+                "data_year": b.data_year,
+            }
+            for b in line_items
+        ],
+    }
+
+
 def _serialize_provider(provider: Provider, risk: RiskScore | None) -> dict:
     return {
         "npi": provider.npi,
@@ -147,4 +205,5 @@ def _serialize_provider(provider: Provider, risk: RiskScore | None) -> dict:
         "entity_profile_score": float(risk.entity_profile_score) if risk and risk.entity_profile_score else None,
         "network_association_score": float(risk.network_association_score) if risk and risk.network_association_score else None,
         "geographic_risk_score": float(risk.geographic_risk_score) if risk and risk.geographic_risk_score else None,
+        "billing_velocity_score": float(risk.billing_velocity_score) if risk and risk.billing_velocity_score else None,
     }

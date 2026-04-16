@@ -69,17 +69,24 @@ def fetch_nppes_page(
     return response.json()
 
 
+TAXONOMY_DESCRIPTIONS = [
+    "Suppliers/Durable Medical Equipment",
+    "Home Health",
+    "Hospice Care",
+]
+
+
 def fetch_by_zip_taxonomy(
     zip_code: str,
-    taxonomy_code: str,
+    taxonomy_desc: str,
     limit: int = 200,
     skip: int = 0,
 ) -> dict:
-    """Fetch providers by ZIP code and taxonomy code."""
+    """Fetch providers by ZIP code and taxonomy description."""
     params = {
         "version": "2.1",
         "postal_code": zip_code,
-        "taxonomy_description": "",
+        "taxonomy_description": taxonomy_desc,
         "limit": limit,
         "skip": skip,
     }
@@ -93,19 +100,20 @@ def fetch_by_zip_taxonomy(
 
 
 def fetch_all_for_zip(zip_code: str) -> list[dict]:
-    """Fetch all providers in a ZIP code, paginating through results."""
+    """Fetch target-taxonomy providers in a ZIP code, paginating."""
     all_results = []
-    skip = 0
-    while True:
-        data = fetch_by_zip_taxonomy(zip_code, "", skip=skip)
-        result_count = data.get("result_count", 0)
-        if result_count == 0:
-            break
-        results = data.get("results", [])
-        all_results.extend(results)
-        if len(results) < 200:
-            break
-        skip += 200
+    for tax_desc in TAXONOMY_DESCRIPTIONS:
+        skip = 0
+        while True:
+            data = fetch_by_zip_taxonomy(zip_code, tax_desc, skip=skip)
+            result_count = data.get("result_count", 0)
+            if result_count == 0:
+                break
+            results = data.get("results", [])
+            all_results.extend(results)
+            if len(results) < 200:
+                break
+            skip += 200
     return all_results
 
 

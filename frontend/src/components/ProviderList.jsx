@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useApi } from "../hooks/useApi";
 import RiskBadge from "./RiskBadge";
 
-export default function ProviderList() {
+export default function ProviderList({ onProviderClick }) {
   const [search, setSearch] = useState("");
   const [zip, setZip] = useState("");
   const [minRisk, setMinRisk] = useState("");
@@ -84,7 +84,11 @@ export default function ProviderList() {
             </thead>
             <tbody>
               {data.results.map((p) => (
-                <tr key={p.npi}>
+                <tr
+                  key={p.npi}
+                  className="clickable-row"
+                  onClick={() => onProviderClick?.(p.npi)}
+                >
                   <td className="mono">{p.npi}</td>
                   <td>{p.name}</td>
                   <td className="small">{p.taxonomy_desc}</td>

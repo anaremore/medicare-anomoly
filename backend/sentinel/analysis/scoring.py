@@ -1,7 +1,7 @@
 """Composite risk scoring engine.
 
 Combines address clustering, entity profile, network association,
-and geographic risk scores into a weighted composite.
+geographic risk, and billing velocity scores into a weighted composite.
 """
 
 import logging
@@ -20,17 +20,19 @@ from sentinel.models import (
 )
 from sentinel.analysis.clustering import compute_address_clustering_score
 from sentinel.analysis.velocity import compute_entity_profile_score
+from sentinel.analysis.billing import compute_billing_velocity_score
 
 logger = logging.getLogger(__name__)
 
 TAXONOMY_CODES = [settings.dme_taxonomy, settings.hha_taxonomy, settings.hospice_taxonomy]
 
-# Score weights
+# Score weights — billing velocity added as 5th component
 WEIGHTS = {
-    "address_clustering": 0.30,
-    "entity_profile": 0.25,
-    "network_association": 0.25,
-    "geographic_risk": 0.20,
+    "address_clustering": 0.25,
+    "entity_profile": 0.20,
+    "network_association": 0.20,
+    "geographic_risk": 0.15,
+    "billing_velocity": 0.20,
 }
 
 
@@ -205,6 +207,9 @@ def compute_all_risk_scores(db: Session) -> int:
         geo_score, geo_signals = compute_geographic_risk_score(
             db, provider.npi
         )
+        billing_score, billing_signals = compute_billing_velocity_score(
+            db, provider.npi
+        )
 
         # Weighted composite
         composite = (
@@ -212,6 +217,7 @@ def compute_all_risk_scores(db: Session) -> int:
             + profile_score * WEIGHTS["entity_profile"]
             + network_score * WEIGHTS["network_association"]
             + geo_score * WEIGHTS["geographic_risk"]
+            + billing_score * WEIGHTS["billing_velocity"]
         )
 
         signals = {
@@ -219,6 +225,7 @@ def compute_all_risk_scores(db: Session) -> int:
             "entity_profile": profile_signals,
             "network_association": network_signals,
             "geographic_risk": geo_signals,
+            "billing_velocity": billing_signals,
         }
 
         # Upsert risk score
@@ -231,6 +238,7 @@ def compute_all_risk_scores(db: Session) -> int:
         risk.entity_profile_score = profile_score
         risk.network_association_score = network_score
         risk.geographic_risk_score = geo_score
+        risk.billing_velocity_score = billing_score
         risk.composite_score = round(composite, 1)
         risk.signals = signals
         risk.computed_at = datetime.now()

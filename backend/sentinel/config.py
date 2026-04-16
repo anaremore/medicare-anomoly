@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql://sentinel:sentinel@localhost:5432/sentinel"
+    database_url: str = "postgresql://sentinel:sentinel@127.0.0.1:5450/sentinel"
     nppes_api_url: str = "https://npiregistry.cms.hhs.gov/api/?version=2.1"
     leie_csv_url: str = "https://oig.hhs.gov/exclusions/downloadables/UPDATED.csv"
     census_geocoder_url: str = (
