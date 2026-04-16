@@ -8,6 +8,9 @@ Surfaces the most suspicious billing patterns across all providers:
 - New entity ramp: Young entities billing large amounts quickly
 """
 
+import logging
+
+import httpx
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, text, case, literal_column
 from sqlalchemy.orm import Session
@@ -15,7 +18,60 @@ from sqlalchemy.orm import Session
 from sentinel.db import get_db
 from sentinel.models import Billing, BillingSummary, Provider
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["anomalies"])
+
+# Cache NPPES lookups to avoid repeated API calls within a request
+_nppes_cache: dict[str, dict] = {}
+
+
+def lookup_npi(npi: str) -> dict:
+    """Look up provider name and address from NPPES API, with in-memory cache."""
+    if npi in _nppes_cache:
+        return _nppes_cache[npi]
+
+    result = {"name": None, "address": None}
+    try:
+        resp = httpx.get(
+            "https://npiregistry.cms.hhs.gov/api/",
+            params={"version": "2.1", "number": npi},
+            timeout=5.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("result_count", 0) > 0:
+            r = data["results"][0]
+            basic = r.get("basic", {})
+            result["name"] = (
+                basic.get("organization_name")
+                or f"{basic.get('last_name', '')}, {basic.get('first_name', '')}"
+            )
+            for addr in r.get("addresses", []):
+                if addr.get("address_purpose") == "LOCATION":
+                    result["address"] = (
+                        f"{addr.get('address_1', '')}, {addr.get('city', '')}, "
+                        f"{addr.get('state', '')} {addr.get('postal_code', '')}"
+                    )
+                    break
+    except Exception:
+        pass
+
+    _nppes_cache[npi] = result
+    return result
+
+
+def resolve_name(npi: str, provider: Provider | None) -> tuple[str | None, str | None]:
+    """Get name and address from local DB or NPPES API fallback."""
+    if provider:
+        name = provider.org_name or f"{provider.last_name}, {provider.first_name}"
+        address = (
+            f"{provider.practice_address_1}, {provider.practice_city}, "
+            f"{provider.practice_state} {provider.practice_zip}"
+        )
+        return name, address
+
+    info = lookup_npi(npi)
+    return info["name"], info["address"]
 
 
 @router.get("/anomalies/code-concentration")
@@ -70,8 +126,8 @@ def get_code_concentration_anomalies(
     for row in rows:
         npi = row[0]
 
-        # Get provider name from our DB or HCPCS detail
         provider = db.get(Provider, npi)
+        name, address = resolve_name(npi, provider)
 
         # Get HCPCS codes for this NPI
         hcpcs = (
@@ -86,12 +142,8 @@ def get_code_concentration_anomalies(
 
         results.append({
             "npi": npi,
-            "name": provider.org_name if provider else None,
-            "address": (
-                f"{provider.practice_address_1}, {provider.practice_city}, "
-                f"{provider.practice_state} {provider.practice_zip}"
-                if provider else None
-            ),
+            "name": name,
+            "address": address,
             "total_medicare_payment": float(row[1] or 0),
             "total_beneficiaries": row[2],
             "total_hcpcs_codes": row[3],
@@ -178,15 +230,12 @@ def get_billing_spikes(
     for row in rows:
         npi = row[0]
         provider = db.get(Provider, npi)
+        name, address = resolve_name(npi, provider)
 
         results.append({
             "npi": npi,
-            "name": provider.org_name if provider else None,
-            "address": (
-                f"{provider.practice_address_1}, {provider.practice_city}, "
-                f"{provider.practice_state} {provider.practice_zip}"
-                if provider else None
-            ),
+            "name": name,
+            "address": address,
             "prev_year": row[7],
             "curr_year": row[8],
             "prev_payment": float(row[1] or 0),

@@ -162,7 +162,7 @@ function CodeConcentrationTable({ results, onProviderClick }) {
               }
             >
               <td className="mono">{r.npi}</td>
-              <td>{r.name || <NpiLookup npi={r.npi} />}</td>
+              <td>{r.name || r.npi}</td>
               <td className="money">
                 ${r.total_medicare_payment.toLocaleString(undefined, {
                   maximumFractionDigits: 0,
@@ -229,7 +229,7 @@ function BillingSpikesTable({ results, onProviderClick }) {
             onClick={() => onProviderClick?.(r.npi)}
           >
             <td className="mono">{r.npi}</td>
-            <td>{r.name || <NpiLookup npi={r.npi} />}</td>
+            <td>{r.name || r.npi}</td>
             <td className="money">
               ${r.prev_payment.toLocaleString(undefined, {
                 maximumFractionDigits: 0,
@@ -280,7 +280,7 @@ function VolumeOutliersTable({ results, onProviderClick }) {
             onClick={() => onProviderClick?.(r.npi)}
           >
             <td className="mono">{r.npi}</td>
-            <td>{r.name || <NpiLookup npi={r.npi} />}</td>
+            <td>{r.name || r.npi}</td>
             <td className="money">
               ${r.total_medicare_payment.toLocaleString(undefined, {
                 maximumFractionDigits: 0,
@@ -327,7 +327,7 @@ function HighRiskCodesTable({ results, onProviderClick }) {
             onClick={() => onProviderClick?.(r.npi)}
           >
             <td className="mono">{r.npi}</td>
-            <td>{r.name || <NpiLookup npi={r.npi} />}</td>
+            <td>{r.name || r.npi}</td>
             <td className="money">
               ${r.total_revenue.toLocaleString(undefined, {
                 maximumFractionDigits: 0,
