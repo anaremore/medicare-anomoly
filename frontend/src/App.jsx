@@ -6,6 +6,8 @@ import ProviderDetail from "./components/ProviderDetail";
 import AddressDrilldown from "./components/AddressDrilldown";
 import AlertFeed from "./components/AlertFeed";
 import AnomalyReport from "./components/AnomalyReport";
+import InvestigationView from "./components/InvestigationView";
+
 const TABS = [
   { id: "dashboard", label: "Dashboard" },
   { id: "anomalies", label: "Billing Anomalies" },
@@ -24,6 +26,11 @@ export default function App() {
     setSelectedAddress(addressId);
     setSelectedNpi(null);
     setActiveTab("addresses");
+  };
+
+  const handleInvestigate = (npi) => {
+    setSelectedNpi(npi);
+    setActiveTab("investigate");
   };
 
   const handleProviderClick = (npi) => {
@@ -57,7 +64,13 @@ export default function App() {
           <Dashboard onAddressClick={handleAddressClick} />
         )}
         {activeTab === "anomalies" && (
-          <AnomalyReport onProviderClick={handleProviderClick} />
+          <AnomalyReport onProviderClick={handleInvestigate} />
+        )}
+        {activeTab === "investigate" && selectedNpi && (
+          <InvestigationView
+            npi={selectedNpi}
+            onClose={() => setActiveTab("anomalies")}
+          />
         )}
         {activeTab === "map" && (
           <MapView onAddressClick={handleAddressClick} />

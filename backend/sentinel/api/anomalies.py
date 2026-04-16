@@ -26,11 +26,15 @@ _nppes_cache: dict[str, dict] = {}
 
 
 def lookup_npi(npi: str) -> dict:
-    """Look up provider name and address from NPPES API, with in-memory cache."""
+    """Look up full provider details from NPPES API, with in-memory cache."""
     if npi in _nppes_cache:
         return _nppes_cache[npi]
 
-    result = {"name": None, "address": None}
+    result = {
+        "name": None, "address": None, "city": None, "state": None,
+        "zip": None, "enumeration_date": None, "taxonomy": None,
+        "entity_type": None, "deactivation_date": None,
+    }
     try:
         resp = httpx.get(
             "https://npiregistry.cms.hhs.gov/api/",
@@ -46,12 +50,24 @@ def lookup_npi(npi: str) -> dict:
                 basic.get("organization_name")
                 or f"{basic.get('last_name', '')}, {basic.get('first_name', '')}"
             )
+            result["enumeration_date"] = basic.get("enumeration_date")
+            result["deactivation_date"] = basic.get("deactivation_date")
+            result["entity_type"] = (
+                "individual" if r.get("enumeration_type") == "NPI-1" else "organization"
+            )
+            for t in r.get("taxonomies", []):
+                if t.get("primary"):
+                    result["taxonomy"] = t.get("desc")
+                    break
             for addr in r.get("addresses", []):
                 if addr.get("address_purpose") == "LOCATION":
                     result["address"] = (
                         f"{addr.get('address_1', '')}, {addr.get('city', '')}, "
                         f"{addr.get('state', '')} {addr.get('postal_code', '')}"
                     )
+                    result["city"] = addr.get("city")
+                    result["state"] = addr.get("state")
+                    result["zip"] = (addr.get("postal_code") or "")[:5]
                     break
     except Exception:
         pass
@@ -491,5 +507,269 @@ def get_anomaly_summary(db: Session = Depends(get_db)):
             "code_concentration": code_conc,
             "volume_outliers": vol_outliers,
             "billing_spikes": spikes,
+        },
+    }
+
+
+@router.get("/anomalies/investigate/{npi}")
+def investigate_entity(npi: str, db: Session = Depends(get_db)):
+    """Full investigative case file for a single entity.
+
+    Assembles everything we know into one view:
+    - Entity identity (name, address, registration date, taxonomy)
+    - Billing history across all years with YoY changes
+    - HCPCS code breakdown with fraud-risk flags
+    - Peer comparison (vs same ZIP and statewide medians)
+    - Red flags summary (plain English)
+    - Co-located entities at same address (if in our provider DB)
+    """
+    # 1. Entity identity — local DB first, NPPES API fallback
+    provider = db.get(Provider, npi)
+    if provider:
+        identity = {
+            "npi": npi,
+            "name": provider.org_name or f"{provider.last_name}, {provider.first_name}",
+            "address": f"{provider.practice_address_1}, {provider.practice_city}, {provider.practice_state} {provider.practice_zip}",
+            "city": provider.practice_city,
+            "state": provider.practice_state,
+            "zip": (provider.practice_zip or "")[:5],
+            "enumeration_date": str(provider.enumeration_date) if provider.enumeration_date else None,
+            "deactivation_date": str(provider.deactivation_date) if provider.deactivation_date else None,
+            "taxonomy": provider.taxonomy_desc,
+            "entity_type": "individual" if provider.entity_type == 1 else "organization",
+            "source": "local_db",
+        }
+    else:
+        info = lookup_npi(npi)
+        identity = {
+            "npi": npi,
+            "name": info["name"],
+            "address": info["address"],
+            "city": info["city"],
+            "state": info["state"],
+            "zip": info["zip"],
+            "enumeration_date": info["enumeration_date"],
+            "deactivation_date": info["deactivation_date"],
+            "taxonomy": info["taxonomy"],
+            "entity_type": info["entity_type"],
+            "source": "nppes_api",
+        }
+
+    # 2. Billing history
+    summaries = (
+        db.query(BillingSummary)
+        .filter(BillingSummary.npi == npi)
+        .order_by(BillingSummary.data_year)
+        .all()
+    )
+
+    billing_history = []
+    for s in summaries:
+        billing_history.append({
+            "year": s.data_year,
+            "total_medicare_payment": float(s.total_medicare_payment or 0),
+            "total_submitted_charges": float(s.total_submitted_charges or 0),
+            "total_beneficiaries": s.total_beneficiaries,
+            "total_claims": s.total_claims,
+            "total_services": float(s.total_services or 0),
+            "total_hcpcs_codes": s.total_hcpcs_codes,
+            "dme_medicare_payment": float(s.dme_medicare_payment or 0),
+            "pos_medicare_payment": float(s.pos_medicare_payment or 0),
+        })
+
+    # YoY growth
+    yoy_growth = None
+    if len(summaries) >= 2:
+        prev = float(summaries[0].total_medicare_payment or 0)
+        curr = float(summaries[-1].total_medicare_payment or 0)
+        if prev > 0:
+            yoy_growth = {
+                "from_year": summaries[0].data_year,
+                "to_year": summaries[-1].data_year,
+                "from_amount": prev,
+                "to_amount": curr,
+                "growth_pct": round(((curr - prev) / prev) * 100, 1),
+            }
+
+    # 3. HCPCS detail (latest year)
+    latest_year = summaries[-1].data_year if summaries else None
+    hcpcs_detail = []
+    high_risk_hcpcs = set()
+    FRAUD_CODES = {
+        "L1833", "L1851", "L1843", "L1832", "L1844", "L1852",
+        "L0648", "L0650", "L0651", "L0631", "L0637",
+        "L3761", "L3808", "L3916",
+        "E0607", "E2101", "A4253", "A4256", "A4258",
+        "E0720", "E0730", "A4595",
+        "Q4101", "Q4116", "Q4121", "Q4131", "Q4132", "Q4133",
+        "K0823", "K0824", "K0856", "K0861",
+    }
+
+    if latest_year:
+        lines = (
+            db.query(Billing)
+            .filter(Billing.npi == npi, Billing.data_year == latest_year)
+            .order_by(Billing.total_services.desc().nullslast())
+            .all()
+        )
+        for b in lines:
+            is_fraud_code = b.hcpcs_code in FRAUD_CODES
+            if is_fraud_code:
+                high_risk_hcpcs.add(b.hcpcs_code)
+            hcpcs_detail.append({
+                "code": b.hcpcs_code,
+                "description": b.hcpcs_description,
+                "category": b.rbcs_category,
+                "beneficiaries": b.total_beneficiaries,
+                "claims": b.total_claims,
+                "services": float(b.total_services or 0),
+                "avg_charge": float(b.avg_submitted_charge or 0),
+                "avg_payment": float(b.avg_medicare_payment or 0),
+                "is_rental": b.is_rental,
+                "fraud_risk_code": is_fraud_code,
+            })
+
+    # 4. Peer comparison
+    peer_comparison = None
+    if summaries and identity.get("zip"):
+        zip5 = identity["zip"]
+        latest = summaries[-1]
+        my_payment = float(latest.total_medicare_payment or 0)
+
+        # ZIP-level peers
+        zip_payments = db.execute(text("""
+            SELECT total_medicare_payment FROM billing_summary bs
+            JOIN providers p ON p.npi = bs.npi
+            WHERE p.practice_zip LIKE :zip_prefix
+            AND bs.data_year = :yr AND bs.total_medicare_payment > 0
+            ORDER BY bs.total_medicare_payment
+        """), {"zip_prefix": f"{zip5}%", "yr": latest.data_year}).fetchall()
+
+        # Statewide peers
+        state_payments = db.execute(text("""
+            SELECT total_medicare_payment FROM billing_summary
+            WHERE data_year = :yr AND total_medicare_payment > 0
+            ORDER BY total_medicare_payment
+        """), {"yr": latest.data_year}).fetchall()
+
+        zip_vals = [float(r[0]) for r in zip_payments] if zip_payments else []
+        state_vals = [float(r[0]) for r in state_payments] if state_payments else []
+
+        zip_median = zip_vals[len(zip_vals)//2] if zip_vals else None
+        state_median = state_vals[len(state_vals)//2] if state_vals else None
+
+        peer_comparison = {
+            "entity_payment": my_payment,
+            "zip_median": zip_median,
+            "zip_ratio": round(my_payment / zip_median, 1) if zip_median else None,
+            "zip_peer_count": len(zip_vals),
+            "state_median": state_median,
+            "state_ratio": round(my_payment / state_median, 1) if state_median else None,
+            "state_peer_count": len(state_vals),
+            "state_percentile": round(
+                sum(1 for v in state_vals if v <= my_payment) / len(state_vals) * 100, 1
+            ) if state_vals else None,
+        }
+
+    # 5. Red flags — plain English summary
+    red_flags = []
+
+    if summaries:
+        latest = summaries[-1]
+        payment = float(latest.total_medicare_payment or 0)
+        codes = latest.total_hcpcs_codes or 0
+        benes = latest.total_beneficiaries or 0
+        services = float(latest.total_services or 0)
+
+        if codes <= 3 and payment > 100000:
+            red_flags.append({
+                "severity": "critical",
+                "flag": f"Billing ${payment:,.0f} from only {codes} HCPCS code{'s' if codes != 1 else ''}",
+                "detail": "Legitimate suppliers typically bill across many codes. Extreme concentration suggests scheme billing.",
+            })
+        elif codes <= 5 and payment > 100000:
+            red_flags.append({
+                "severity": "high",
+                "flag": f"Billing ${payment:,.0f} from only {codes} HCPCS codes",
+                "detail": "Low code diversity relative to billing volume.",
+            })
+
+        if benes > 0 and services / benes > 100:
+            red_flags.append({
+                "severity": "critical",
+                "flag": f"{services/benes:.0f} services per beneficiary",
+                "detail": "Normal DME is 2-10 services per patient. This ratio suggests phantom billing or unbundling.",
+            })
+        elif benes > 0 and services / benes > 50:
+            red_flags.append({
+                "severity": "high",
+                "flag": f"{services/benes:.0f} services per beneficiary",
+                "detail": "Significantly above normal service volume per patient.",
+            })
+
+        if yoy_growth and yoy_growth["growth_pct"] > 500:
+            red_flags.append({
+                "severity": "critical",
+                "flag": f"{yoy_growth['growth_pct']:,.0f}% billing growth ({yoy_growth['from_year']}-{yoy_growth['to_year']})",
+                "detail": f"From ${yoy_growth['from_amount']:,.0f} to ${yoy_growth['to_amount']:,.0f}. Rapid ramp is a hallmark of fraud schemes.",
+            })
+        elif yoy_growth and yoy_growth["growth_pct"] > 200:
+            red_flags.append({
+                "severity": "high",
+                "flag": f"{yoy_growth['growth_pct']:,.0f}% billing growth ({yoy_growth['from_year']}-{yoy_growth['to_year']})",
+                "detail": f"From ${yoy_growth['from_amount']:,.0f} to ${yoy_growth['to_amount']:,.0f}.",
+            })
+
+    if high_risk_hcpcs:
+        red_flags.append({
+            "severity": "high",
+            "flag": f"Billing fraud-associated HCPCS codes: {', '.join(sorted(high_risk_hcpcs))}",
+            "detail": "These codes appear disproportionately in DOJ healthcare fraud prosecutions (orthotic braces, glucose monitors, etc.).",
+        })
+
+    if identity.get("enumeration_date"):
+        from datetime import datetime
+        try:
+            enum_date = datetime.strptime(identity["enumeration_date"], "%m/%d/%Y")
+            age_days = (datetime.now() - enum_date).days
+            if age_days < 730 and summaries and float(summaries[-1].total_medicare_payment or 0) > 500000:
+                red_flags.append({
+                    "severity": "high",
+                    "flag": f"Entity registered {identity['enumeration_date']} — less than 2 years old with ${float(summaries[-1].total_medicare_payment or 0):,.0f} in billing",
+                    "detail": "New entities billing large amounts quickly is a common fraud pattern.",
+                })
+        except ValueError:
+            pass
+
+    if identity.get("name") and identity["entity_type"] == "organization":
+        name_upper = identity["name"].upper()
+        medical_keywords = {"MEDICAL", "HEALTH", "DME", "DURABLE", "SUPPLY", "HOSPICE", "HOME", "CARE", "PHARMACY", "ORTHO"}
+        if not any(kw in name_upper for kw in medical_keywords):
+            red_flags.append({
+                "severity": "medium",
+                "flag": f"Non-medical entity name: \"{identity['name']}\"",
+                "detail": "Entity name does not contain healthcare-related keywords but is registered as a medical supplier.",
+            })
+
+    if peer_comparison and peer_comparison.get("state_percentile") and peer_comparison["state_percentile"] > 99:
+        red_flags.append({
+            "severity": "high",
+            "flag": f"Top {100 - peer_comparison['state_percentile']:.1f}% of all TX DMEPOS suppliers by billing",
+            "detail": f"${peer_comparison['entity_payment']:,.0f} vs state median of ${peer_comparison['state_median']:,.0f} ({peer_comparison['state_ratio']}x).",
+        })
+
+    red_flags.sort(key=lambda f: {"critical": 0, "high": 1, "medium": 2}.get(f["severity"], 3))
+
+    return {
+        "identity": identity,
+        "billing_history": billing_history,
+        "yoy_growth": yoy_growth,
+        "hcpcs_detail": hcpcs_detail,
+        "peer_comparison": peer_comparison,
+        "red_flags": red_flags,
+        "red_flag_count": {
+            "critical": sum(1 for f in red_flags if f["severity"] == "critical"),
+            "high": sum(1 for f in red_flags if f["severity"] == "high"),
+            "medium": sum(1 for f in red_flags if f["severity"] == "medium"),
         },
     }

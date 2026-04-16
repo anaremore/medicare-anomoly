@@ -969,3 +969,203 @@ body {
   font-size: 13px;
   color: var(--text-muted);
 }
+
+/* Investigation View */
+.investigation {
+  max-width: 1100px;
+}
+
+.inv-header {
+  margin-bottom: 24px;
+}
+
+.inv-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.inv-title-row h2 {
+  font-size: 22px;
+}
+
+.inv-flag-count {
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.inv-flag-count.critical {
+  background: rgba(220, 38, 38, 0.25);
+  color: #fca5a5;
+}
+
+.inv-flag-count.high {
+  background: rgba(234, 88, 12, 0.2);
+  color: #fdba74;
+}
+
+.inv-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.inv-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.inv-section h3 {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+}
+
+.inv-flags {
+  border-color: var(--critical);
+  background: rgba(220, 38, 38, 0.03);
+}
+
+.flag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.flag-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  border-left: 4px solid var(--border);
+}
+
+.flag-item.critical { border-left-color: var(--critical); }
+.flag-item.high { border-left-color: var(--high); }
+.flag-item.medium { border-left-color: var(--medium); }
+
+.flag-severity {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  height: fit-content;
+  flex-shrink: 0;
+}
+
+.flag-severity.critical { background: rgba(220, 38, 38, 0.2); color: #fca5a5; }
+.flag-severity.high { background: rgba(234, 88, 12, 0.2); color: #fdba74; }
+.flag-severity.medium { background: rgba(217, 119, 6, 0.2); color: #fcd34d; }
+
+.flag-text {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.flag-detail {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.inv-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .inv-row { grid-template-columns: 1fr; }
+}
+
+.inv-growth {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
+.inv-growth.extreme {
+  background: rgba(220, 38, 38, 0.15);
+  color: #fca5a5;
+}
+
+.inv-growth.high {
+  background: rgba(234, 88, 12, 0.1);
+  color: #fdba74;
+}
+
+.inv-growth-detail {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Peer comparison */
+.peer-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+}
+
+.peer-stat {
+  text-align: center;
+  padding: 16px;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+}
+
+.peer-value {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--accent);
+}
+
+.peer-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 4px;
+}
+
+.peer-detail {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Fraud-risk HCPCS rows */
+.fraud-code-row {
+  background: rgba(220, 38, 38, 0.05) !important;
+}
+
+.fraud-code-badge {
+  background: rgba(220, 38, 38, 0.2);
+  color: #fca5a5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
