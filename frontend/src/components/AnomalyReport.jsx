@@ -231,22 +231,22 @@ function BillingSpikesTable({ results, onProviderClick }) {
             <td className="mono">{r.npi}</td>
             <td>{r.name || r.npi}</td>
             <td className="money">
-              ${r.prev_payment.toLocaleString(undefined, {
+              ${(r.prev_payment || 0).toLocaleString(undefined, {
                 maximumFractionDigits: 0,
               })}
               <span className="small"> ({r.prev_year})</span>
             </td>
             <td className="money">
-              ${r.curr_payment.toLocaleString(undefined, {
+              ${(r.curr_payment || 0).toLocaleString(undefined, {
                 maximumFractionDigits: 0,
               })}
               <span className="small"> ({r.curr_year})</span>
             </td>
             <td>
               <span
-                className={`growth-badge ${r.growth_pct > 500 ? "extreme" : "high"}`}
+                className={`growth-badge ${(r.growth_pct || 0) > 500 ? "extreme" : "high"}`}
               >
-                +{r.growth_pct.toLocaleString()}%
+                +{(r.growth_pct || 0).toLocaleString()}%
               </span>
             </td>
             <td>{r.total_hcpcs_codes}</td>
@@ -282,7 +282,7 @@ function VolumeOutliersTable({ results, onProviderClick }) {
             <td className="mono">{r.npi}</td>
             <td>{r.name || r.npi}</td>
             <td className="money">
-              ${r.total_medicare_payment.toLocaleString(undefined, {
+              ${(r.total_medicare_payment || 0).toLocaleString(undefined, {
                 maximumFractionDigits: 0,
               })}
             </td>
@@ -290,13 +290,13 @@ function VolumeOutliersTable({ results, onProviderClick }) {
             <td>{r.total_services?.toLocaleString()}</td>
             <td>
               <span
-                className={`volume-badge ${r.services_per_beneficiary > 500 ? "extreme" : "high"}`}
+                className={`volume-badge ${(r.services_per_beneficiary || 0) > 500 ? "extreme" : "high"}`}
               >
-                {r.services_per_beneficiary.toLocaleString()}
+                {(r.services_per_beneficiary || 0).toLocaleString()}
               </span>
             </td>
             <td className="money">
-              ${r.payment_per_beneficiary?.toLocaleString()}
+              ${(r.payment_per_beneficiary || 0)?.toLocaleString()}
             </td>
           </tr>
         ))}
@@ -329,18 +329,18 @@ function HighRiskCodesTable({ results, onProviderClick }) {
             <td className="mono">{r.npi}</td>
             <td>{r.name || r.npi}</td>
             <td className="money">
-              ${r.total_revenue.toLocaleString(undefined, {
+              ${(r.total_revenue || 0).toLocaleString(undefined, {
                 maximumFractionDigits: 0,
               })}
             </td>
             <td className="money warning-text">
-              ${r.high_risk_revenue.toLocaleString(undefined, {
+              ${(r.high_risk_revenue || 0).toLocaleString(undefined, {
                 maximumFractionDigits: 0,
               })}
             </td>
             <td>
               <span className="risk-ratio-badge">
-                {(r.risk_ratio * 100).toFixed(0)}%
+                {((r.risk_ratio || 0) * 100).toFixed(0)}%
               </span>
             </td>
             <td>{r.total_hcpcs_codes}</td>
