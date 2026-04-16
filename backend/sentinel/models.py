@@ -208,6 +208,33 @@ class RiskScore(Base):
     )
 
 
+class PersonMatch(Base):
+    """Matches between providers and watchlist records (LEIE, DOJ, etc.)."""
+    __tablename__ = "person_matches"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    provider_npi: Mapped[str] = mapped_column(String(10), index=True)
+    provider_name: Mapped[str | None] = mapped_column(Text)
+    matched_source: Mapped[str] = mapped_column(String(30))  # leie, doj, sam
+    matched_record_id: Mapped[int | None] = mapped_column(Integer)
+    matched_name: Mapped[str | None] = mapped_column(Text)
+    matched_city: Mapped[str | None] = mapped_column(Text)
+    matched_state: Mapped[str | None] = mapped_column(String(2))
+    matched_specialty: Mapped[str | None] = mapped_column(Text)
+    matched_exclusion_type: Mapped[str | None] = mapped_column(String(20))
+    matched_exclusion_date: Mapped[str | None] = mapped_column(Text)
+    confidence: Mapped[float] = mapped_column(Numeric(5, 1))
+    confidence_factors: Mapped[dict | None] = mapped_column(JSONB)
+    match_type: Mapped[str] = mapped_column(String(20))  # exact, fuzzy_strong, fuzzy_weak, org_name
+    reviewed: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_true_match: Mapped[bool | None] = mapped_column(Boolean)  # null=unreviewed
+
+    __table_args__ = (
+        Index("idx_person_matches_confidence", "confidence"),
+        Index("idx_person_matches_npi", "provider_npi"),
+    )
+
+
 class Alert(Base):
     __tablename__ = "alerts"
 
