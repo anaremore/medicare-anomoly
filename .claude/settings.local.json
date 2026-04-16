@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init:*)",
+      "Bash(git remote:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:data.cms.gov)",
+      "WebSearch",
+      "Bash(curl -s \"https://data.cms.gov/data-api/v1/dataset\")",
+      "Bash(python -c ':*)",
+      "Bash(curl -s \"https://data.cms.gov/data-api/v1/dataset/5db1e54c-5903-4bca-a6ad-22171463ee2a/data?size=1\")",
+      "Bash(curl -s \"https://data.cms.gov/data-api/v1/dataset/5db1e54c-5903-4bca-a6ad-22171463ee2a/data-viewer?size=1\")",
+      "Bash(curl -s \"https://data.cms.gov/provider-summary-by-type-of-service/medicare-durable-medical-equipment-devices-supplies/medicare-durable-medical-equipment-devices-supplies-by-supplier.json\")",
+      "Bash(python -m json.tool)",
+      "Bash(curl -s \"https://data.cms.gov/data.json\")"
+    ]
+  }
+}

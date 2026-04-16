@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from sentinel.api import addresses, alerts, anomalies, map, matches, providers, stats
+from sentinel.api import addresses, alerts, anomalies, map, providers, stats
 
 app = FastAPI(
     title="Sentinel",
@@ -24,7 +24,6 @@ app.include_router(alerts.router, prefix="/api")
 app.include_router(map.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
 app.include_router(anomalies.router, prefix="/api")
-app.include_router(matches.router, prefix="/api")
 
 
 @app.get("/api/health")
