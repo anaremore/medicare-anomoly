@@ -734,3 +734,190 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
+
+/* Anomaly Report */
+.anomaly-report h2 {
+  margin-bottom: 4px;
+}
+
+.anomaly-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.anomaly-summary-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+}
+
+.anomaly-summary-card.highlight {
+  border-color: var(--high);
+  background: rgba(234, 88, 12, 0.05);
+}
+
+.anomaly-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.anomaly-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  cursor: pointer;
+  color: var(--text-muted);
+  text-align: left;
+  flex: 1;
+  min-width: 180px;
+  transition: all 0.15s;
+}
+
+.anomaly-tab:hover {
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+.anomaly-tab.active {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--text);
+}
+
+.anomaly-tab-icon {
+  font-size: 20px;
+  font-weight: 700;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  flex-shrink: 0;
+}
+
+.anomaly-tab.active .anomaly-tab-icon {
+  background: var(--accent);
+  color: white;
+}
+
+.anomaly-tab-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.anomaly-tab-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Anomaly badges */
+.code-count-badge {
+  background: rgba(220, 38, 38, 0.2);
+  color: #fca5a5;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.growth-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.growth-badge.high {
+  background: rgba(234, 88, 12, 0.2);
+  color: #fdba74;
+}
+
+.growth-badge.extreme {
+  background: rgba(220, 38, 38, 0.25);
+  color: #fca5a5;
+  animation: pulse 2s infinite;
+}
+
+.volume-badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.volume-badge.high {
+  background: rgba(234, 88, 12, 0.2);
+  color: #fdba74;
+}
+
+.volume-badge.extreme {
+  background: rgba(220, 38, 38, 0.25);
+  color: #fca5a5;
+}
+
+.risk-ratio-badge {
+  background: rgba(220, 38, 38, 0.2);
+  color: #fca5a5;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* HCPCS expandable detail */
+.detail-row td {
+  padding: 0 !important;
+  border-bottom: 2px solid var(--accent) !important;
+}
+
+.hcpcs-expand {
+  background: var(--bg-card);
+  padding: 12px 16px;
+  font-size: 12px;
+}
+
+.hcpcs-expand strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.hcpcs-line {
+  display: flex;
+  gap: 16px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: baseline;
+}
+
+.hcpcs-line .mono:first-child {
+  width: 60px;
+  flex-shrink: 0;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.hcpcs-line .small {
+  flex: 1;
+}
+
+.hcpcs-line .mono:nth-child(3),
+.hcpcs-line .mono:nth-child(4) {
+  text-align: right;
+  width: 100px;
+  flex-shrink: 0;
+}

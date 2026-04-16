@@ -5,9 +5,11 @@ import ProviderList from "./components/ProviderList";
 import ProviderDetail from "./components/ProviderDetail";
 import AddressDrilldown from "./components/AddressDrilldown";
 import AlertFeed from "./components/AlertFeed";
+import AnomalyReport from "./components/AnomalyReport";
 
 const TABS = [
   { id: "dashboard", label: "Dashboard" },
+  { id: "anomalies", label: "Billing Anomalies" },
   { id: "map", label: "Map" },
   { id: "providers", label: "Providers" },
   { id: "addresses", label: "Address Clusters" },
@@ -54,6 +56,9 @@ export default function App() {
       <main className="app-main">
         {activeTab === "dashboard" && (
           <Dashboard onAddressClick={handleAddressClick} />
+        )}
+        {activeTab === "anomalies" && (
+          <AnomalyReport onProviderClick={handleProviderClick} />
         )}
         {activeTab === "map" && (
           <MapView onAddressClick={handleAddressClick} />
